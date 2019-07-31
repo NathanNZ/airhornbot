@@ -1,0 +1,32 @@
+# Start from golang alpine base image
+FROM golang:alpine AS build-env
+
+RUN apk update && apk upgrade && \
+    apk add --no-cache git openssh
+
+# Copy everything from the current directory to the PWD(Present Working Directory) inside the container
+COPY . /go/src/airhornbot
+
+# Set the Current Working Directory inside the container
+WORKDIR /go
+
+# Get the bot's dependencies and install it
+RUN go get -v airhornbot/cmd/bot
+
+# New stage
+FROM alpine
+
+RUN apk update && apk upgrade && \
+    apk add --no-cache ca-certificates
+
+# Copy the audio files
+ADD ./audio /audio
+
+# Copy the bot executables
+COPY --from=build-env /go/bin/bot /app/bot
+
+# Set work directory
+WORKDIR /app
+
+# Run the executable
+ENTRYPOINT ["/app/bot"]

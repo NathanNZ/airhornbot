@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/antage/eventsource"
 	"github.com/bwmarrin/discordgo"
 	"github.com/gorilla/handlers"

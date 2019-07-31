@@ -15,7 +15,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/bwmarrin/discordgo"
 	"github.com/dustin/go-humanize"
 	redis "gopkg.in/redis.v3"
@@ -33,10 +33,13 @@ var (
 
 	// Sound encoding settings
 	BITRATE        = 128
-	MAX_QUEUE_SIZE = 6
+	MAX_QUEUE_SIZE = 6	
 
 	// Owner
 	OWNER string
+
+	// Audio Location
+	AUDIOLOCATION string
 )
 
 // Play represents an individual use of the !airhorn command
@@ -240,7 +243,7 @@ func (s *SoundCollection) Random() *Sound {
 // https://github.com/nstafie/dca-rs
 // eg: dca-rs --raw -i <input wav file> > <output file>
 func (s *Sound) Load(c *SoundCollection) error {
-	path := fmt.Sprintf("audio/%v_%v.dca", c.Prefix, s.Name)
+	path := fmt.Sprintf("%v/%v_%v.dca", AUDIOLOCATION, c.Prefix, s.Name)
 
 	file, err := os.Open(path)
 
@@ -457,7 +460,7 @@ func playSound(play *Play, vc *discordgo.VoiceConnection) (err error) {
 
 func onReady(s *discordgo.Session, event *discordgo.Ready) {
 	log.Info("Recieved READY payload")
-	s.UpdateStatus(0, "airhornbot.com")
+	s.UpdateStatus(0, "airhornbot")
 }
 
 func scontains(key string, options ...string) bool {
@@ -637,17 +640,18 @@ func onMessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func main() {
 	var (
-		Token      = flag.String("t", "", "Discord Authentication Token")
-		Redis      = flag.String("r", "", "Redis Connection String")
-		Shard      = flag.String("s", "", "Shard ID")
-		ShardCount = flag.String("c", "", "Number of shards")
-		Owner      = flag.String("o", "", "Owner ID")
+		Token         = flag.String("t", "", "Discord Authentication Token")
+		Redis         = flag.String("r", "", "Redis Connection String")
+		Shard         = flag.String("s", "", "Shard ID")
+		ShardCount    = flag.String("c", "", "Number of shards")
+		Owner         = flag.String("o", "", "Owner ID")
+		AudioLocation = flag.String("a", "/audio", "Audiofile Location")
 		err        error
 	)
 	flag.Parse()
 
-	if *Owner != "" {
-		OWNER = *Owner
+	if *AudioLocation != "" {
+		AUDIOLOCATION = *AudioLocation
 	}
 
 	// Preload all the sounds
@@ -679,7 +683,23 @@ func main() {
 		}).Fatal("Failed to create discord session")
 		return
 	}
-
+	
+	
+	if *Owner != "" {
+		OWNER = *Owner
+	} else {
+		botApplication, err := discord.Application("@me")
+		if (err == nil) {			 
+			log.Info(botApplication.Name)
+			OWNER = botApplication.Owner.ID
+			log.WithFields(log.Fields{ 
+					"OWNER" : OWNER,
+			}).Info("Owner ID")			
+		} else {
+		log.Info("Owner ID was not set, please provide this as a parameter")
+		}
+	}
+	
 	// Set sharding info
 	discord.ShardID, _ = strconv.Atoi(*Shard)
 	discord.ShardCount, _ = strconv.Atoi(*ShardCount)
